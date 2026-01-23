@@ -752,7 +752,80 @@ def fifteen():
     except Exception as e:
         st.error(e)
         return False
+    
+def seventeen():
+    try:
+        query = """
+            create table if not exists tosswin(
+            matchId int,
+            toss_winner varchar(100),
+            toss_decision varchar(100),
+            match_winner varchar(100)
+            );
+            """
+        cursor.execute(query)
+        connection.commit()
 
+        url = "https://cricbuzz-cricket.p.rapidapi.com/matches/v1/recent"
+        data = apicall(url)
+
+        matchId = []
+
+        for t in data.get("typeMatches", []):
+            for s in t.get("seriesMatches", []):
+                wrapper = s.get("seriesAdWrapper")
+                if not wrapper:
+                    continue
+
+                for match in wrapper.get("matches", []):
+                    info = match.get("matchInfo", {})
+                    matchid = info.get("matchId")
+                    matchId.append(matchid)
+        tossResult = []
+        for id in matchId:
+            url = f"https://cricbuzz-cricket.p.rapidapi.com/mcenter/v1/{id}"
+            data = apicall(url)
+            if not data:
+                continue
+
+            matid = data.get("matchid")
+            status = data.get("shortstatus")
+            state = data.get("state")
+            team1 = data.get("team1", {})
+            teamname1 = team1.get("teamname")
+            shortname1 = team1.get("teamsname")
+            team2 = data.get("team2", {})
+            teamname2 = team2.get("teamname")
+            shortname2 = team2.get("teamsname")
+            tossstatus = data.get("tossstatus")
+            
+            if state == "Complete":
+                if teamname1 in tossstatus:
+                    tossWinner = teamname1
+                else:
+                    tossWinner = teamname2
+
+                if shortname1 in status:
+                    matchWinner = teamname1
+                else:
+                    matchWinner = teamname2
+                
+                if "bowl" in tossstatus:
+                    tossDecision = "bowl"
+                else:
+                    tossDecision = "Bat"
+                tossResult.append((matid, tossWinner, tossDecision, matchWinner))
+        cursor.executemany("""
+        insert into tosswin(matchId, toss_winner, toss_decision, match_winner)
+        values (%s, %s, %s, %s)
+        """, tossResult)
+        connection.commit()
+        return True
+    except Exception as e:
+        st.error(e)
+        return False
+
+                
 
 
 
@@ -773,7 +846,7 @@ names = [
     "14.",
     "15. Identify players who perform exceptionally well in close matches",
     "16.",
-    "17.",
+    "17. Investigate whether winning the toss gives teams an advantage in winning matches.",
     "18.",
     "19.",
     "20.",
@@ -911,4 +984,15 @@ match select_index:
             cursor.execute(query)
             rows = cursor.fetchall()
             df = pd.DataFrame(rows, columns=["PlayerName", "close_matches", "avg_runs", "wins_when_batted"])
+            st.dataframe(df)
+    case 16:
+        # if seventeen():
+            query = """
+                select toss_decision, count(*) as total_matches, sum(case when toss_winner = match_winner then 1 else 0 end) as match_won_by_toss,
+                round(sum(case when toss_winner = match_winner then 1 else 0 end)* 100/ count(*), 2) as winPercen
+                from tosswin group by toss_decision 
+                """
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            df = pd.DataFrame(rows, columns=["toss_decision", "total_matches", "match_won_by_toss", "winPercen"])
             st.dataframe(df)
