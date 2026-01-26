@@ -4,8 +4,7 @@ from utils.db_connection import get_connection
 
 st.set_page_config(
     page_title="Player CRUD",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 st.title("Create • Read • Update • Delete Player Records")
@@ -180,3 +179,4 @@ elif operation == "Update Player":
     update_player()
 else:
     delete_player()
+
