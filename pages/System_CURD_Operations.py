@@ -50,6 +50,12 @@ def create_player():
         if not name.replace(" ", "").isalpha():
             st.warning("Enter a valid player name")
             return
+        if not team.replace(" ", "").isalpha():
+            st.warning("Enter a valid team name")
+            return
+        if not country.replace(" ", "").isalpha():
+            st.warning("Enter a valid country name")
+            return
 
         cursor.execute("SELECT * FROM players WHERE name=%s", (name,))
         if cursor.fetchone():
